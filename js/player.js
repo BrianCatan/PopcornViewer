@@ -21,7 +21,7 @@ var PlayerFrame = React.createClass({
         <div id="header">
           <h3 style={{display: 'inline'}}><span className="green">&raquo; Add to Queue</span></h3>
           <form action="#">
-            <input type="text" id="input" onKeyPress={ addToPlaylist() }/>
+            <input type="text" id="input" onKeyPress={ this.addToPlaylist }/>
           </form>
         </div>
       </div>
@@ -29,19 +29,19 @@ var PlayerFrame = React.createClass({
   },
 
   addToPlaylist: function(e) {
-    if (e.keyCode === 13) {
+    if (e.charCode === 13) {
       e.preventDefault();
-      var ID = transformToID(document.getElementById("input").value);
-      var response = updatePlayList(ID)
+      var ID = this.transformToID(document.getElementById("input").value);
+      var response = this.updatePlaylist(ID);
       document.getElementById("input").value = "";
       if (response) { // TODO ** MIGRATE ACTIONS TO SOCKET HANDLER
         var playlist = document.getElementById("playlist");
         var option = document.createElement("option");
-        option.addEventListener("dblclick",function() { updateNowPlaying() })
+        option.addEventListener("dblclick", function() { this.updateNowPlaying() });
         option.text = response;
         playlist.add(option);
       } else {
-        alert("Invalid URL or server error!")
+        alert("Invalid URL or server error!");
       }
     }
   },
@@ -53,6 +53,7 @@ var PlayerFrame = React.createClass({
 
   updateNowPlaying: function() {
     // TODO ** SEND REPONSE TO SERVER -- MIGRATE RESULTS TO SOCKET HANDLER
+    alert(hi);
     var playlist = document.getElementById("playlist");
     var player = document.getElementById("player");
     this.state.videoId = playlist.options[playlist.selectedIndex].text;
