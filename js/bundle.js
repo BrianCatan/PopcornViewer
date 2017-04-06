@@ -9504,17 +9504,22 @@ var PlayerFrame = _react2.default.createClass({
   },
 
   addToPlaylist: function addToPlaylist(e) {
+    var _this = this;
+
     if (e.charCode === 13) {
       e.preventDefault();
       var ID = this.transformToID(document.getElementById("input").value);
-      var response = this.updatePlaylist(ID);
+      var response = this.sendAddToPlaylist(ID);
       document.getElementById("input").value = "";
       if (response) {
         // TODO ** MIGRATE ACTIONS TO SOCKET HANDLER
         var playlist = document.getElementById("playlist");
         var option = document.createElement("option");
         option.addEventListener("dblclick", function () {
-          this.updateNowPlaying();
+          _this.updateNowPlaying();
+        });
+        playlist.addEventListener("keyup", function (e) {
+          _this.removeFromPlaylist(e);
         });
         option.text = response;
         playlist.add(option);
@@ -9524,17 +9529,22 @@ var PlayerFrame = _react2.default.createClass({
     }
   },
 
-  updatePlaylist: function updatePlaylist(url) {
+  sendAddToPlaylist: function sendAddToPlaylist(url) {
     // TODO ** SEND RESPONSE TO SERVER
     return url;
   },
 
+  removeFromPlaylist: function removeFromPlaylist(e) {
+    if (e.keyCode === 46) {
+      playlist.remove(playlist.selectedIndex);
+    }
+  },
+
   updateNowPlaying: function updateNowPlaying() {
     // TODO ** SEND REPONSE TO SERVER -- MIGRATE RESULTS TO SOCKET HANDLER
-    alert(hi);
     var playlist = document.getElementById("playlist");
     var player = document.getElementById("player");
-    this.state.videoId = playlist.options[playlist.selectedIndex].text;
+    this.setState({ videoId: playlist.options[playlist.selectedIndex].text });
   },
 
   transformToID: function transformToID(url) {
