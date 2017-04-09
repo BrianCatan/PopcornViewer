@@ -1,9 +1,13 @@
 import React from 'react'
 import ReactDOM from 'react-dom'
 
+var socket;
 var PlayerFrame = React.createClass({
   getInitialState: function () {
-    return { videoId: "M7lc1UVf-VE" }
+    return {
+      socketAddress: "24.107.206.144",
+      socketPort: "25565",
+      videoId: "M7lc1UVf-VE" }
   },
 
   render: function() {
@@ -12,7 +16,7 @@ var PlayerFrame = React.createClass({
         {this.state.videoId ?
           <iframe id="player"
             src={"https://www.youtube.com/embed/" + this.state.videoId + "?enablejsapi=1"}
-            width="576" height="326" frameBorder="0" allowFullScreen>
+            width="576" height="326" allowFullScreen frameBorder="0">
           </iframe>
           : ""
         }
@@ -28,47 +32,97 @@ var PlayerFrame = React.createClass({
     );
   },
 
+  componentDidMount() {
+    var self = this;
+
+    socket = new WebSocket("ws:" + this.state.socketAddress + ":" + this.state.socketPort);
+    socket.onopen = function () {
+    };
+    socket.onmessage = function (e) {
+      var msg = e.data;
+      switch (msg.split("&")[0]) {
+
+        case "addToPlaylist":
+        if (msg.split("&")[1]) {
+            var playlist = document.getElementById("playlist");
+            var option = document.createElement("option");
+
+            option.addEventListener("dblclick", () => {
+              this.send("updateNowPlaying&" + playlist.selectedIndex);
+            });
+
+            playlist.addEventListener("keyup", (e2) => {
+              if (e2.keyCode === 46) {
+                this.send("removeFromPlaylist&" + playlist.selectedIndex);
+              }
+            });
+
+            option.text = msg.split("&")[1];
+            playlist.add(option);
+          } else {
+            alert("Invalid URL or server error!");
+          }
+          break;
+
+        case "removeFromPlaylist":
+          document.getElementById("playlist").remove(msg.split("&")[1]);
+          break;
+
+        case "updateNowPlaying":
+          self.setState({ videoId: msg.split("&")[1] });
+          var player = new YT.Player('player', {
+            events: {
+              'onStateChange': onPlayerStateChange
+            }
+          });
+          break;
+
+        case "callPlayer":
+          self.callPlayer(msg.split("&")[1]);
+          break;
+
+        default:
+      }
+    };
+    socket.onclose = function () {
+      alert("Connection lost to host!");
+    };
+  },
+
+  callPlayer: function(func, args) {
+    var player = document.getElementById("player");
+    player.contentWindow.postMessage(JSON.stringify({
+      'event': 'command',
+      'func': func,
+      'args': args || []
+    }), "*");
+  },
+
   addToPlaylist: function(e) {
     if (e.charCode === 13) {
       e.preventDefault();
       var ID = this.transformToID(document.getElementById("input").value);
-      var response = this.sendAddToPlaylist(ID);
       document.getElementById("input").value = "";
-      if (response) { // TODO ** MIGRATE ACTIONS TO SOCKET HANDLER
-        var playlist = document.getElementById("playlist");
-        var option = document.createElement("option");
-        option.addEventListener("dblclick", () => { this.updateNowPlaying() });
-        playlist.addEventListener("keyup", (e) => { this.removeFromPlaylist(e) });
-        option.text = response;
-        playlist.add(option);
-      } else {
-        alert("Invalid URL or server error!");
-      }
+      socket.send("addToPlaylist&" + ID);
     }
-  },
-
-  sendAddToPlaylist: function(url) {
-    // TODO ** SEND RESPONSE TO SERVER
-    return url;
-  },
-
-  removeFromPlaylist: function(e) {
-    if (e.keyCode === 46) {
-      playlist.remove(playlist.selectedIndex);
-    }
-  },
-
-  updateNowPlaying: function() {
-    // TODO ** SEND REPONSE TO SERVER -- MIGRATE RESULTS TO SOCKET HANDLER
-    var playlist = document.getElementById("playlist");
-    var player = document.getElementById("player");
-    this.setState({ videoId: playlist.options[playlist.selectedIndex].text });
   },
 
   transformToID: function(url) {
     return url.split('=')[1];
   }
 });
+
+window.onYouTubeIframeAPIReady = function() {
+  var player = new YT.Player('player', {
+    events: {
+      'onStateChange': onPlayerStateChange
+    }
+  });
+}
+
+window.onPlayerStateChange = function(event) {
+  socket.send("playerStateChange&" + event.data);
+}
 
 ReactDOM.render(
   <PlayerFrame/>,
